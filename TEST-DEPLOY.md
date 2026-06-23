@@ -36,6 +36,11 @@ MIGRATE=0
 REGENERATE_APPS_TXT=1
 INSTALL_APP_ARGS=--install-app erpnext --install-app crm --install-app prospecting
 
+# IMPORTANT: production's bench-network uses 10.89.0.0/24. A second stack on
+# the same host MUST use a different subnet or Docker errors with
+# "Pool overlaps with other one on this address space". Use 10.90.0 for test.
+NET_PREFIX=10.90.0
+
 TRAEFIK_NETWORK=PLACEHOLDER
 ```
 

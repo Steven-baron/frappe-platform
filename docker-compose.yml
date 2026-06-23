@@ -24,12 +24,12 @@ x-custom-image: &custom_image
     - use-vc
     - single-request-reopen
   extra_hosts:
-    - "db:10.89.0.10"
-    - "redis-cache:10.89.0.11"
-    - "redis-queue:10.89.0.12"
-    - "redis-socketio:10.89.0.13"
-    - "backend:10.89.0.20"
-    - "websocket:10.89.0.21"
+    - "db:${NET_PREFIX:-10.89.0}.10"
+    - "redis-cache:${NET_PREFIX:-10.89.0}.11"
+    - "redis-queue:${NET_PREFIX:-10.89.0}.12"
+    - "redis-socketio:${NET_PREFIX:-10.89.0}.13"
+    - "backend:${NET_PREFIX:-10.89.0}.20"
+    - "websocket:${NET_PREFIX:-10.89.0}.21"
   deploy:
     restart_policy:
       condition: always
@@ -45,7 +45,7 @@ services:
       - sites:/home/frappe/frappe-bench/sites
     networks:
       bench-network:
-        ipv4_address: 10.89.0.20
+        ipv4_address: ${NET_PREFIX:-10.89.0}.20
     healthcheck:
       test: ["CMD", "wait-for-it", "0.0.0.0:8000"]
       interval: 2s
@@ -94,7 +94,7 @@ services:
         condition: service_completed_successfully
     networks:
       bench-network:
-        ipv4_address: 10.89.0.21
+        ipv4_address: ${NET_PREFIX:-10.89.0}.21
     healthcheck:
       test: ["CMD", "wait-for-it", "0.0.0.0:9000"]
       interval: 2s
@@ -251,7 +251,7 @@ services:
       - db-data:/var/lib/mysql
     networks:
       bench-network:
-        ipv4_address: 10.89.0.10
+        ipv4_address: ${NET_PREFIX:-10.89.0}.10
     healthcheck:
       test: mysqladmin ping -h localhost --password=${DB_ROOT_PASSWORD}
       interval: 1s
@@ -266,7 +266,7 @@ services:
       - redis-cache-data:/data
     networks:
       bench-network:
-        ipv4_address: 10.89.0.11
+        ipv4_address: ${NET_PREFIX:-10.89.0}.11
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -282,7 +282,7 @@ services:
       - redis-queue-data:/data
     networks:
       bench-network:
-        ipv4_address: 10.89.0.12
+        ipv4_address: ${NET_PREFIX:-10.89.0}.12
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -298,7 +298,7 @@ services:
       - redis-socketio-data:/data
     networks:
       bench-network:
-        ipv4_address: 10.89.0.13
+        ipv4_address: ${NET_PREFIX:-10.89.0}.13
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -320,4 +320,4 @@ networks:
   bench-network:
     ipam:
       config:
-        - subnet: 10.89.0.0/24
+        - subnet: ${NET_PREFIX:-10.89.0}.0/24
