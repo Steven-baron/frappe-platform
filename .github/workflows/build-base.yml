@@ -1,0 +1,99 @@
+name: Build base image
+
+# Builds the heavy ERPNext base image (frappe + erpnext + CRM + Helpdesk + Builder).
+# This takes ~20 minutes but only needs to run when upgrading framework versions.
+#
+# Tag: ghcr.io/steven-baron/erpnext-crm:base-16
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps-base.json
+      - .github/workflows/build-base.yml
+  workflow_dispatch:
+    inputs:
+      frappe_branch:
+        description: Frappe framework branch
+        default: version-16
+      image_tag:
+        description: Base image tag suffix (e.g. "16")
+        default: "16"
+
+concurrency:
+  group: build-base-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_BASENAME: erpnext-crm
+  DEFAULT_FRAPPE_BRANCH: version-16
+  DEFAULT_TAG: "16"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - uses: actions/checkout@v4
+
+      - name: Clone frappe_docker (build context)
+        run: git clone --depth 1 https://github.com/frappe/frappe_docker.git
+
+      - name: Resolve image name and tags
+        id: meta
+        run: |
+          owner=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          image="${{ env.REGISTRY }}/${owner}/${{ env.IMAGE_BASENAME }}"
+          tag="${{ github.event.inputs.image_tag || env.DEFAULT_TAG }}"
+          frappe_branch="${{ github.event.inputs.frappe_branch || env.DEFAULT_FRAPPE_BRANCH }}"
+          echo "image=${image}"           >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}"               >> "$GITHUB_OUTPUT"
+          echo "frappe_branch=${frappe_branch}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push base image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frappe_docker
+          file: ./frappe_docker/images/layered/Containerfile
+          push: true
+          build-args: |
+            FRAPPE_PATH=https://github.com/frappe/frappe
+            FRAPPE_BRANCH=${{ steps.meta.outputs.frappe_branch }}
+            CACHE_BUST=${{ hashFiles('apps-base.json') }}
+          secret-files: |
+            apps_json=${{ github.workspace }}/apps-base.json
+          tags: |
+            ${{ steps.meta.outputs.image }}:base-${{ steps.meta.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Summary
+        run: |
+          echo "### ✅ Base image pushed" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`${{ steps.meta.outputs.image }}:base-${{ steps.meta.outputs.tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Now trigger **build-apps** to layer custom apps on top." >> "$GITHUB_STEP_SUMMARY"

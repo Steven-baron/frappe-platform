@@ -1,0 +1,41 @@
+# Local development overrides — layered on top of docker-compose.yml.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml --env-file .env.local up -d
+#
+# What this adds:
+#   - Publishes port 8090 so you can open http://localhost:8090
+#   - Disables pull_policy (use locally built image, don't hit GHCR)
+#   - Turns off Traefik (not needed locally)
+
+services:
+  backend:
+    pull_policy: never
+
+  frontend:
+    pull_policy: never
+    ports:
+      - "${HTTP_PORT:-8090}:8080"
+    labels:
+      - "traefik.enable=false"
+
+  websocket:
+    pull_policy: never
+
+  queue-default:
+    pull_policy: never
+
+  queue-long:
+    pull_policy: never
+
+  queue-short:
+    pull_policy: never
+
+  scheduler:
+    pull_policy: never
+
+  configurator:
+    pull_policy: never
+
+  create-site:
+    pull_policy: never
