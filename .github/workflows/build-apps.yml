@@ -42,33 +42,14 @@ jobs:
 
       - name: Resolve APPS_SHA
         id: sha
+        # APPS_SHA busts the Docker cache so the custom apps are re-cloned fresh.
+        # - repository_dispatch: use the app repo's commit SHA from the payload
+        # - push / manual: use the unique run id (always re-clones)
         run: |
           if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
-            # App repo sent its own commit SHA — use it to bust the clone cache
             echo "apps_sha=${{ github.event.client_payload.sha }}" >> "$GITHUB_OUTPUT"
           else
-            # Fetch the current HEAD SHA for each app branch listed in apps-custom.json
-            python3 - << 'EOF'
-import json, subprocess, hashlib, os
-
-apps = json.load(open("apps-custom.json"))
-combined = ""
-for app in apps:
-    url = app["url"]
-    branch = app.get("branch", "main")
-    result = subprocess.run(
-        ["git", "ls-remote", url, f"refs/heads/{branch}"],
-        capture_output=True, text=True
-    )
-    sha = result.stdout.split()[0] if result.stdout.strip() else "unknown"
-    print(f"{url}@{branch}: {sha}")
-    combined += sha
-
-digest = hashlib.sha256(combined.encode()).hexdigest()[:12]
-with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-    f.write(f"apps_sha={digest}\n")
-print(f"combined SHA: {digest}")
-EOF
+            echo "apps_sha=run-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Resolve image name
